@@ -224,48 +224,6 @@ export default function MoccetPlatformLandingPage() {
                 </div>
             </section>
 
-            {/* Community Section */}
-            <section className="container mx-auto px-4 py-16 text-center">
-                <h2 className="text-3xl font-semibold mb-8 bg-gradient-to-r from-white to-gray-300 text-transparent bg-clip-text">
-                    Join the Community
-                </h2>
-                <p className="text-lg text-gray-300 max-w-3xl mx-auto mb-12">
-                    Connect with other users, developers, and researchers.  Help shape the future of collaborative AI.
-                </p>
-                <div className="flex flex-wrap justify-center gap-6">
-                    <Button
-                        variant="outline"
-                        size="lg"
-                        className="text-white border-gray-700 hover:bg-gray-800/50 hover:border-gray-600 flex items-center gap-2"
-                        onClick={() => window.open('https://github.com/', '_blank')} // Replace with actual GitHub link
-                    >
-                        <Github className="w-5 h-5" /> GitHub
-                    </Button>
-                    <Button
-                        variant="outline"
-                        size="lg"
-                        className="text-white border-gray-700 hover:bg-gray-800/50 hover:border-gray-600 flex items-center gap-2"
-                         onClick={() => window.open('https://discord.com/', '_blank')} // Replace with actual Discord
-                    >
-                        <MessageSquare className="w-5 h-5" /> Discord
-                    </Button>
-                    <Button
-                        variant="outline"
-                        size="lg"
-                        className="text-white border-gray-700 hover:bg-gray-800/50 hover:border-gray-600 flex items-center gap-2"
-                    >
-                        <BookOpen className="w-5 h-5" /> Documentation
-                    </Button>
-                     <Button
-                        variant="outline"
-                        size="lg"
-                        className="text-white border-gray-700 hover:bg-gray-800/50 hover:border-gray-600 flex items-center gap-2"
-                    >
-                        <Mail className="w-5 h-5" /> Contact Us
-                    </Button>
-                </div>
-            </section>
-
             {/* Footer */}
             <footer className="bg-gray-800 py-8 mt-auto">
                 <div className="container mx-auto px-4 text-center text-gray-400">

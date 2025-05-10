@@ -76,21 +76,21 @@ const MoccetPlatform = () => {
     const [isSheetOpen, setIsSheetOpen] = useState(false);
     const [AGENTS, setAGENTS] = useState([])
     const [INITIAL_TASKS, setINITIAL_TASKS] = useState([])
-  const openSheet = () => setIsSheetOpen(true);
-  const closeSheet = () => setIsSheetOpen(false);
+    const openSheet = () => setIsSheetOpen(true);
+    const closeSheet = () => setIsSheetOpen(false);
     const [tasks, setTasks] = useState<Task[]>(INITIAL_TASKS);
     const [nodes, setNodes, onNodesChange] = useNodesState<Node[]>([]);
     const [edges, setEdges, onEdgesChange, onConnect] = useEdgesState<Edge[]>([]);
     const [isSimulationRunning, setIsSimulationRunning] = useState(false);
     const [selectedAgent, setSelectedAgent] = useState<Agent | null>(null);
     const [isAgentPanelOpen, setIsAgentPanelOpen] = useState(false);
-
+    const [simulationInterval, setSimulationInterval] = useState<NodeJS.Timeout|null>(null)
+    const [toUpdate, setToUpdate] = useState(0)
     // Initialize workflow
     useEffect(() => {
         const initialWorkflow = createInitialWorkflow(tasks, AGENTS,nodes);
         setNodes(initialWorkflow.nodes);
         setEdges(initialWorkflow.edges);
-        setIsSimulationRunning(false);
     }, [setNodes, setTasks]);//setViewport
 
     // Update nodes and edges when tasks change
@@ -98,7 +98,6 @@ const MoccetPlatform = () => {
         const newWorkflow = createInitialWorkflow(tasks, AGENTS,nodes);
         setNodes(newWorkflow.nodes);
         setEdges(newWorkflow.edges);
-        setIsSimulationRunning(false);
     }, [tasks, setNodes, setEdges]);
 
     useEffect(() => {
@@ -126,7 +125,6 @@ const MoccetPlatform = () => {
         const newWorkflow = createInitialWorkflow(tasks, AGENTS,nodes);
         setNodes(newWorkflow.nodes);
         setEdges(newWorkflow.edges);
-        setIsSimulationRunning(false);
 
     }, []);
 
@@ -140,15 +138,38 @@ const MoccetPlatform = () => {
         setIsAgentPanelOpen(false)
     }
 
+    const handleUpdate = useCallback(async () => {
+        const fetchTasks = async () => {
+            try {
+              console.log(Env.BACKEND_APP_URL)
+              const response = await fetch(Env.BACKEND_APP_URL+'/api/task', {
+                method: "GET",
+                headers: { "Content-Type": "application/json" },
+            }); // update this path if your API route differs
+              const data = await response.json();
+              console.log("found_data",data)
+              const transformedTasks: Task[] = data.map((task: any) => ({...task,}));
+              setTasks(transformedTasks)
+            } catch (error) {
+              console.error('Failed to fetch:', error);
+          };
+        }
+          
+        await fetchTasks()
+        console.log("init:",INITIAL_TASKS)
+        // setToUpdate(toUpdate+1)
+        console.log(INITIAL_TASKS)
+        // setTasks(INITIAL_TASKS);
+    },[]);
     // Simulation logic
-    const runSimulation = useCallback(() => {
+    const runSimulation = useCallback(async () => {
         setIsSimulationRunning(true);
+        await handleUpdate()
         let currentTasks = [...tasks];
-
-        const interval = setInterval(() => {
-            // Find a running task
+        const simulationActions = async () => {
+            await handleUpdate()
+            // currentTasks = [...tasks];
             const runningTaskIndex = currentTasks.findIndex(t => t.status === 'running');
-
             if (runningTaskIndex !== -1) {
                 // Simulate task completion
                 currentTasks = [...currentTasks]; // Create a copy to avoid mutating state directly
@@ -156,7 +177,32 @@ const MoccetPlatform = () => {
                     ...currentTasks[runningTaskIndex],
                     status: 'completed',
                 };
-                setTasks(currentTasks);
+                try {
+                    const tempCurrTask = currentTasks[runningTaskIndex];
+                    const { name, id, description, agentId, status, dependencies } = tempCurrTask;
+                    console.log("id:",id)
+
+                    const payload = {name, id, description, agentId, status, dependencies}
+                    console.log(payload)
+                    const res = await fetch(Env.BACKEND_APP_URL+"/api/task/status", {
+                      method: "PUT",
+                      headers: { "Content-Type": "application/json" },
+                      body: JSON.stringify(payload),
+                    });
+                    console.log(res)
+                    if (!res.ok) throw new Error("Failed to modify task");
+              
+                    const data = await res.json();
+                    console.log("Task modified:", data);
+                    // await handleUpdate()
+                    //   setTasks(currentTasks)
+                    // currentTasks = [...tasks];
+                  } catch (error) {
+                    console.error(error);
+                  }
+                  await handleUpdate()
+                        // currentTasks = [...tasks];
+                //   currentTasks=[...tasks]
 
                 // Find next eligible task to run
                 const nextTaskIndex = currentTasks.findIndex(t =>
@@ -171,9 +217,36 @@ const MoccetPlatform = () => {
                         ...currentTasks[nextTaskIndex],
                         status: 'running',
                     };
-                    setTasks(currentTasks);
+                    try {
+                        const tempCurrTask = currentTasks[nextTaskIndex];
+                        const { name, id, description, agentId, status, dependencies } = tempCurrTask;
+                        console.log("id:",id)
+
+                        // const currTempStatus = 'running'
+                        const payload = {name, id, description, agentId, status, dependencies}
+                        console.log(payload)
+                        const res = await fetch(Env.BACKEND_APP_URL+"/api/task/status", {
+                          method: "PUT",
+                          headers: { "Content-Type": "application/json" },
+                          body: JSON.stringify(payload),
+                        });
+                        console.log(res)
+                        if (!res.ok) throw new Error("Failed to modify task");
+                  
+                        const data = await res.json();
+                        console.log("Task modified:", data);
+                      
+
+                      } catch (error) {
+                        console.error(error);
+                      }
+                      await handleUpdate()
+                        // currentTasks = [...tasks];
+                //   currentTasks=[...tasks]
+                //   setTasks(currentTasks)
                 } else if (currentTasks.every(t => t.status === 'completed' || t.status === 'failed')) {
                     // Simulation is complete
+                    console.log("here")
                     setIsSimulationRunning(false);
                     clearInterval(interval);
                 }
@@ -192,24 +265,81 @@ const MoccetPlatform = () => {
 
                 if (nextTaskIndex !== -1) {
                     // Start the next task
+                    await handleUpdate()
                     currentTasks = [...currentTasks];  // And here
                     currentTasks[nextTaskIndex] = {
                         ...currentTasks[nextTaskIndex],
                         status: 'running',
+                        dependencies: currentTasks.find(dt => dt.id === currentTasks[nextTaskIndex].id)?.dependencies || []
                     };
-                    setTasks(currentTasks);
-                }
-            }
-        }, Math.random() * (2700 - 1200) + 1200); // Adjust for simulation speed
+                    try {
+                        const tempCurrTask = currentTasks[nextTaskIndex];
+                        const { name, id, description, agentId, status, dependencies } = tempCurrTask;
+                        console.log("id:",id)
 
+                        // const currTempStatus = 'running'
+                        const payload = {name, id, description, agentId, status, dependencies}
+                        console.log(payload)
+                        const res = await fetch(Env.BACKEND_APP_URL+"/api/task/status", {
+                          method: "PUT",
+                          headers: { "Content-Type": "application/json" },
+                          body: JSON.stringify(payload),
+                        });
+                        console.log(res)
+                        if (!res.ok) throw new Error("Failed to modify task");
+                  
+                        const data = await res.json();
+                        console.log("Task modified:", data);
+                        
+                      } catch (error) {
+                        console.error(error);
+                      }
+                      await handleUpdate()
+                        // currentTasks = [...tasks];
+                    // currentTasks=[...tasks]
+                    // setTasks(currentTasks)
+                    }
+            }
+        }
+        simulationActions()
+        const interval = setInterval(async () => {
+            await simulationActions()
+        }, Math.random() * (1700 - 1200) + 1200); // Adjust for simulation speed
+        setSimulationInterval(interval)
         return () => clearInterval(interval);
-    }, [tasks]);
+    }, [tasks, handleUpdate, AGENTS]);
 
     const handleReset = () => {
         setIsSimulationRunning(false);
-        INITIAL_TASKS.forEach(t=>t.status ="idle")
+        INITIAL_TASKS.forEach(async (t) => {
+            try {
+                t.status = "idle"
+                const tempCurrTask = t;
+                const { name, id, description, agentId, status, dependencies } = tempCurrTask;
+
+                const payload = {name, id, description, agentId, status, dependencies}
+                console.log(payload)
+                const res = await fetch(Env.BACKEND_APP_URL+"/api/task", {
+                    method: "PUT",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify(payload),
+                });
+                console.log(res)
+                if (!res.ok) throw new Error("Failed to modify task");
+            
+                const data = await res.json();
+                console.log("Task modified:", data);
+                } catch (error) {
+                console.error(error);
+                }
+        })
+        
         setTasks(INITIAL_TASKS); // Reset to the initial task state
+        setIsSimulationRunning(false);
+        if(simulationInterval)
+            clearInterval(simulationInterval)
     };
+
 
     const handleAgentSelect = (agent: Agent) => {
         setSelectedAgent(agent);
@@ -220,7 +350,7 @@ const MoccetPlatform = () => {
         <div className="flex h-screen bg-gray-900">
             <aside>
                 <SidebarProvider>
-                <AppSidebar panelOpen={isAgentPanelOpen} handleAgentSelect={handleAgentSelect} setAGENTS={setAGENTS} setTASKS={setINITIAL_TASKS}></AppSidebar>
+                <AppSidebar panelOpen={isAgentPanelOpen} toUpdate={toUpdate} handleAgentSelect={handleAgentSelect} setAGENTS={setAGENTS} setTASKS={setINITIAL_TASKS} currTasks={tasks}></AppSidebar>
                 </SidebarProvider>
             </aside>
             {/* Main Content */}
@@ -245,6 +375,13 @@ const MoccetPlatform = () => {
                         >
                             <RefreshCw className="w-4 h-4 mr-2" />
                             Reset
+                        </Button>
+                        <Button
+                            onClick={handleUpdate}
+                            className="bg-yellow-500/20 text-yellow-400 border-yellow-500/30 hover:bg-yellow-500/30 hover:text-yellow-300"
+                        >
+                            <RefreshCw className="w-4 h-4 mr-2" />
+                            Update
                         </Button>
                     </div>
                 </div>

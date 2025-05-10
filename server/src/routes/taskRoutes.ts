@@ -59,21 +59,47 @@ router.delete('/:id', async (req:Request, res:Response) => {
 
 router.put('/', async (req:Request, res:Response) => {
   try {
-    const { name, id, desc, taskAgentId, taskStatus, taskDeps } = req.body;
+    const { name, id, description, agentId, status, dependencies  } = req.body;
 
     const result = await task.findOne({ id: id });
     if (!result) {
       res.status(404).json({ error: "Task not found" });
       return 
     }
-
+    if(!description){
+      res.status(405).json({error:"No description provided"})
+      return
+    }
     result.name = name;
-    result.description = desc;
-    if(taskAgentId != "")
-      result.agentId = taskAgentId;
-    result.status = taskStatus;
-    result.dependencies = taskDeps;
+    result.description = description;
+    if(agentId != "" && agentId != undefined)
+      result.agentId = agentId;
+    result.status = status;
+    result.dependencies = dependencies;
 
+    const updatedTask = await result.save();
+
+    res.json(updatedTask);
+  } catch (error) {
+    console.error("Error updating task:", error);
+    res.status(500).json({ error: "Failed to update task" });
+  }
+})
+
+router.put('/status', async (req:Request, res:Response) => {
+  try {
+    const { name, id, description, agentId, status, dependencies  } = req.body;
+
+    const result = await task.findOne({ id: id });
+    if (!result) {
+      res.status(404).json({ error: "Task not found" });
+      return 
+    }
+    if(!status){
+      res.status(405).json({error:"No status provided"})
+      return
+    }
+    result.status = status;
     const updatedTask = await result.save();
 
     res.json(updatedTask);

@@ -88,6 +88,17 @@ import Link from "next/link"
           headers: { "Content-Type": "application/json" },
       }); // update this path if your API route differs
         const data = await response.json();
+        if(props.currTasks){
+          data.forEach((element) => {
+            if (element){
+            const tempTask = props.currTasks.find(task => task.id === element.id)
+            if (tempTask)
+              element.status = tempTask.status;
+            console.log(element.status)
+            }
+          }
+        );
+        }
         setTasks(data);
         const transformedTasks: Task[] = data.map((task: any) => ({
           ...task,
@@ -104,6 +115,10 @@ import Link from "next/link"
       fetchAgents();
       fetchTasks();
     }, []);
+    useEffect(() => {
+      fetchAgents();
+      fetchTasks();
+    }, [props.currTasks,props.toUpdate]);
     useEffect(() => {
       fetchAgents();
       fetchTasks();
@@ -162,7 +177,8 @@ import Link from "next/link"
 
     const createTask = async () => {
       if(modMode){
-        modifyTask()
+        await modifyTask()
+        await fetchTasks()
         return
       }
       const name = nameRefTask.current?.value.trim();
@@ -205,6 +221,7 @@ import Link from "next/link"
       const found = tasksObj.find(task => task.id === id);
       if (found) setCurrTask(found);
       setOpenTask(true)
+      setTaskDeps(found?.dependencies)
     }
     const modifyTask = async () => {
       const name = nameRefTask.current?.value.trim();
@@ -217,11 +234,14 @@ import Link from "next/link"
       }
   
       setErrorMessage(""); // Clear previous error
-      const taskStatus = currTask?.status
+      const tempCurrTask = props.currTasks.find(task => task.id === currTask?.id)
+      const taskStatus = tempCurrTask?.status
       if(taskAgentId == ""){
         setTaskAgentId(currTask?.agentId || "")
       }
-      const payload = { name, id, desc, taskAgentId, taskStatus, taskDeps };
+      const payload = {
+        name, id, description:desc, agentId:taskAgentId, status:taskStatus, dependencies:taskDeps
+      }
       console.log(payload)
       try {
         const res = await fetch(Env.BACKEND_APP_URL+"/api/task", {

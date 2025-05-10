@@ -45,7 +45,7 @@ export function ComboboxAgent({
           .filter((a) => selectedValues.includes(a.id))
           .map((a) => a.name)
           .join(", ")
-      : "Select Agents...";
+      : "Select Tasks...";
 
   return (
     <Popover open={open} onOpenChange={setOpen}>
